@@ -1,0 +1,26 @@
+# Node
+node_modules/
+
+# Next.js
+.next/
+out/
+
+# 환경 변수
+.env*
+!.env.example
+
+# 로그
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# 운영체제별
+.DS_Store
+Thumbs.db
+
+# 기타
+*.local
+
+# VSCode
+.vscode/ 
