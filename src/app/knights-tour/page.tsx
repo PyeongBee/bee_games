@@ -56,7 +56,7 @@ export default function KnightsTour() {
 
   return (
     <div className='flex flex-col items-center gap-6'>
-      <h2 className='text-2xl font-bold mb-2'>기사의 여행</h2>
+      <h2 className='text-2xl font-bold mb-2 text-amber-800'>기사의 여행</h2>
       <div className='flex flex-col items-center gap-2'>
         <div className='grid grid-cols-8 grid-rows-8 border-2 border-gray-400'>
           {Array.from({ length: N * N }).map((_, idx) => {
