@@ -142,6 +142,9 @@ export default function KnightsTour() {
   return (
     <div className='flex flex-col items-center gap-6'>
       <h2 className='text-2xl font-bold mb-2 text-amber-800'>기사의 여행</h2>
+      <p className='text-gray-600 text-center text-sm mb-2'>
+        NxN 체스판에서 나이트가 모든 칸을 한 번씩만 방문하면 승리하는 퍼즐 게임입니다.
+      </p>
       <div className='flex gap-2 mb-2'>
         {BOARD_SIZES.map((size) => (
           <button

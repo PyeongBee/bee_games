@@ -416,6 +416,9 @@ export default function WallBaduk() {
   return (
     <div className='flex flex-col items-center gap-6'>
       <h2 className='text-2xl font-bold mb-2 text-amber-800'>벽바둑</h2>
+      <p className='text-gray-600 text-center text-sm mb-2'>
+        돌을 움직이고 벽을 설치해 영역을 나누는 전략 보드게임입니다. 상대보다 더 넓은 영역을 차지해보세요!
+      </p>
       <div className='flex gap-2 mb-2 items-center'>
         {TIMER_OPTIONS.map((sec) => (
           <button
@@ -493,7 +496,7 @@ export default function WallBaduk() {
             return (
               <button
                 key={idx}
-                className={`w-12 h-12 flex items-center justify-center border border-gray-300 text-2xl ${bg} ${highlight} hover:bg-green-300 transition-colors relative`}
+                className={`w-12 h-12 flex items-center justify-center border border-gray-300 text-2xl bg-white ${highlight} hover:bg-green-300 transition-colors relative`}
                 onClick={() => (phase === 'placement' ? handlePlacement(x, y) : handleCellClick(x, y))}
                 disabled={
                   gameEnd ||
