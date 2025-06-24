@@ -1,4 +1,5 @@
 'use client';
+
 import { useState, useEffect, useRef } from 'react';
 import { Circle, Square } from 'lucide-react';
 
@@ -26,6 +27,10 @@ function createEmptyWalls() {
   };
 }
 
+function checkStone(r: number, c: number, stones: [number, number, number][]) {
+  return stones.some(([ox, oy]) => ox === r && oy === c);
+}
+
 // 돌을 뛰어넘지 못하게, 경로에 돌이 있는지 체크
 function isValidMove(
   from: [number, number],
@@ -33,83 +38,64 @@ function isValidMove(
   walls: { right: (number | null)[][]; down: (number | null)[][] },
   stones: [number, number, number][]
 ) {
-  const [fx, fy] = from;
-  const [tx, ty] = to;
-  if (fx === tx && fy === ty) return true;
-  const straightDirs = [
-    [0, 1],
-    [1, 0],
-    [0, -1],
-    [-1, 0],
-  ];
-  const diagDirs = [
-    [1, 1],
-    [1, -1],
-    [-1, 1],
-    [-1, -1],
-  ];
-  // 직선 1, 2칸
-  for (const [dx, dy] of straightDirs) {
-    for (let dist = 1; dist <= 2; dist++) {
-      const nx = fx + dx * dist;
-      const ny = fy + dy * dist;
-      if (nx === tx && ny === ty) {
-        let blocked = false;
-        let cx = fx,
-          cy = fy;
-        for (let step = 1; step <= dist; step++) {
-          const tx2 = fx + dx * step;
-          const ty2 = fy + dy * step;
-          if (!canMoveStep(cx, cy, tx2, ty2, walls)) {
-            blocked = true;
-            break;
-          }
-          if (step < dist && stones.some(([ox, oy]) => ox === tx2 && oy === ty2)) {
-            blocked = true;
-            break;
-          }
-          cx = tx2;
-          cy = ty2;
-        }
-        if (blocked) return false;
-        if (stones.some(([ox, oy]) => ox === nx && oy === ny)) return false;
-        return true;
-      }
-    }
+  const [fr, fc] = from;
+  const [tr, tc] = to;
+  // 제자리
+  if (fr === tr && fc === tc) return true;
+  const dx = tr - fr;
+  const dy = tc - fc;
+  // 한 칸(상하좌우)
+  if ((Math.abs(dx) === 1 && dy === 0) || (dx === 0 && Math.abs(dy) === 1)) {
+    if (!checkEmptyWall(fr, fc, tr, tc, walls)) return false;
+    if (checkStone(tr, tc, stones)) return false;
+    return true;
   }
-  // 대각선 1칸만
-  for (const [dx, dy] of diagDirs) {
-    const nx = fx + dx;
-    const ny = fy + dy;
-    if (nx === tx && ny === ty) {
-      if (!canMoveStep(fx, fy, nx, ny, walls)) return false;
-      if (stones.some(([ox, oy]) => ox === nx && oy === ny)) return false;
-      return true;
-    }
+  // 두 칸(상하좌우)
+  if ((Math.abs(dx) === 2 && dy === 0) || (dx === 0 && Math.abs(dy) === 2)) {
+    const mr = fr + (dx === 0 ? 0 : dx / 2);
+    const mc = fc + (dy === 0 ? 0 : dy / 2);
+    if (checkStone(mr, mc, stones) || checkStone(tr, tc, stones)) return false;
+    if (!checkEmptyWall(fr, fc, mr, mc, walls)) return false;
+    if (!checkEmptyWall(mr, mc, tr, tc, walls)) return false;
+    return true;
   }
+  // 대각선(1,1) 이동: (fr,fc)→(tr,tc)에서 (fr,tc), (tr,fc) 중 하나라도 돌이 없으면 이동 가능, 둘 다 있으면 불가
+  if (Math.abs(dx) === 1 && Math.abs(dy) === 1) {
+    if (checkStone(fr, tc, stones) && checkStone(tr, fc, stones) && checkStone(tr, tc, stones)) return false;
+    if (!checkEmptyWall(fr, fc, tr, tc, walls)) return false;
+    if (!checkEmptyWall(tr, tc, fr, fc, walls)) return false;
+    return true;
+  }
+  // 그 외는 불가
   return false;
 }
 
-function canMoveStep(
-  fx: number,
-  fy: number,
-  tx: number,
-  ty: number,
+function checkEmptyWall(
+  fr: number,
+  fc: number,
+  tr: number,
+  tc: number,
   walls: { right: (number | null)[][]; down: (number | null)[][] }
 ) {
-  // fx, fy → tx, ty로 한 칸 이동 시 벽 체크
-  if (fx === tx && Math.abs(fy - ty) === 1) {
+  // fr, fc → tr, tc로 한 칸 이동 시 벽 체크
+  if (fr === tr && Math.abs(fc - tc) === 1) {
     // 좌우
-    if (fy < ty) return !walls.right[fx][fy];
-    else return !walls.right[fx][ty];
-  } else if (fy === ty && Math.abs(fx - tx) === 1) {
+    if (fc < tc) {
+      return walls.right[fr][fc] === null;
+    } else {
+      return walls.right[fr][tc] === null;
+    }
+  } else if (fc === tc && Math.abs(fr - tr) === 1) {
     // 상하
-    if (fx < tx) return !walls.down[fx][fy];
-    else return !walls.down[tx][fy];
-  } else if (Math.abs(fx - tx) === 1 && Math.abs(fy - ty) === 1) {
+    if (fr < tr) {
+      return walls.down[fr][fc] === null;
+    } else {
+      return walls.down[tr][fc] === null;
+    }
+  } else if (Math.abs(fr - tr) === 1 && Math.abs(fc - tc) === 1) {
     // 대각선: 두 경로 중 하나라도 벽이 없으면 허용
-    const path1 = !walls.right[fx][fy] && !walls.down[fx][ty];
-    const path2 = !walls.down[fx][fy] && !walls.right[tx][fy];
+    const path1 = walls.right[fr][fc] === null && walls.down[fr][tc] === null;
+    const path2 = walls.down[fr][fc] === null && walls.right[tr][fc] === null;
     return path1 || path2;
   }
   return false;
@@ -117,12 +103,12 @@ function canMoveStep(
 
 // 벽 설치 가능 위치: 방금 이동한 돌의 상하좌우만
 function getAvailableWalls(lastMoved: [number, number]) {
-  const [x, y] = lastMoved;
-  const result: { x: number; y: number; dir: 'right' | 'down' }[] = [];
-  if (y < N - 1) result.push({ x, y, dir: 'right' });
-  if (y > 0) result.push({ x, y: y - 1, dir: 'right' });
-  if (x < N - 1) result.push({ x, y, dir: 'down' });
-  if (x > 0) result.push({ x: x - 1, y, dir: 'down' });
+  const [r, c] = lastMoved;
+  const result: { r: number; c: number; dir: 'right' | 'down' }[] = [];
+  if (c < N - 1) result.push({ r, c, dir: 'right' });
+  if (c > 0) result.push({ r, c: c - 1, dir: 'right' });
+  if (r < N - 1) result.push({ r, c, dir: 'down' });
+  if (r > 0) result.push({ r: r - 1, c, dir: 'down' });
   return result;
 }
 
@@ -150,30 +136,30 @@ function getAreas(
       areaMap[i][j] = areaId;
       const cells: [number, number][] = [[i, j]];
       while (queue.length) {
-        const [x, y] = queue.shift()!;
+        const [r, c] = queue.shift()!;
         for (let d = 0; d < 4; d++) {
-          const dx = Number(dirs[d][0]);
-          const dy = Number(dirs[d][1]);
-          const nx = Number(x) + dx;
-          const ny = Number(y) + dy;
-          if (nx < 0 || nx >= N || ny < 0 || ny >= N) continue;
+          const dr = Number(dirs[d][0]);
+          const dc = Number(dirs[d][1]);
+          const nr = Number(r) + dr;
+          const nc = Number(c) + dc;
+          if (nr < 0 || nr >= N || nc < 0 || nc >= N) continue;
           // 벽 체크
-          if (d === 0 && walls.right[x][y] !== null) continue; // 오른쪽
-          if (d === 1 && walls.down[x][y] !== null) continue; // 아래
-          if (d === 2 && walls.right[nx][ny] !== null) continue; // 왼쪽
-          if (d === 3 && walls.down[nx][ny] !== null) continue; // 위
-          if (!visited[nx][ny]) {
-            visited[nx][ny] = true;
-            areaMap[nx][ny] = areaId;
-            queue.push([nx, ny]);
-            cells.push([nx, ny]);
+          if (d === 0 && walls.right[r][c] !== null) continue; // 오른쪽
+          if (d === 1 && walls.down[r][c] !== null) continue; // 아래
+          if (d === 2 && walls.right[nr][nc] !== null) continue; // 왼쪽
+          if (d === 3 && walls.down[nr][nc] !== null) continue; // 위
+          if (!visited[nr][nc]) {
+            visited[nr][nc] = true;
+            areaMap[nr][nc] = areaId;
+            queue.push([nr, nc]);
+            cells.push([nr, nc]);
           }
         }
       }
       // 구역 내 돌 소유자 판정
       const owners: number[] = [];
       stones.forEach((s) => {
-        if (cells.some(([x, y]) => s[0] === x && s[1] === y)) owners.push(s[2]);
+        if (cells.some(([r, c]) => s[0] === r && s[1] === c)) owners.push(s[2]);
       });
       areas.push({ cells, owners });
       areaId++;
@@ -189,10 +175,10 @@ function isGameOver(
 ) {
   // 모든 돌이 이동 불가
   for (let i = 0; i < stones.length; i++) {
-    for (let x = 0; x < N; x++) {
-      for (let y = 0; y < N; y++) {
-        if (isValidMove([x, y], [x, y], walls, stones)) {
-          if (!(stones[i][0] === x && stones[i][1] === y)) return false;
+    for (let r = 0; r < N; r++) {
+      for (let c = 0; c < N; c++) {
+        if (isValidMove([r, c], [r, c], walls, stones)) {
+          if (!(stones[i][0] === r && stones[i][1] === c)) return false;
         }
       }
     }
@@ -200,43 +186,42 @@ function isGameOver(
   return true;
 }
 
-const TIMER_OPTIONS = [15, 30, 60];
+const TIMER_OPTIONS = [0, 15, 30, 60]; // 0: 없음(무제한)
 
 export default function WallBaduk() {
-  // stones: [x, y, owner] 배열
+  // stones: [r, c, owner] 배열
   const [stones, setStones] = useState(initialStones);
   const [turn, setTurn] = useState(0); // 0: 파랑(A), 1: 빨강(B)
   const [walls, setWalls] = useState(createEmptyWalls());
   const [gameEnd, setGameEnd] = useState(false);
   const [phase, setPhase] = useState<'placement' | 'move' | 'wall'>('placement');
   const [placementStep, setPlacementStep] = useState(0); // 0~3
-  const [hoverWall, setHoverWall] = useState<{ x: number; y: number; dir: 'right' | 'down' } | null>(null);
+  const [hoverWall, setHoverWall] = useState<{ r: number; c: number; dir: 'right' | 'down' } | null>(null);
   const [selectedStone, setSelectedStone] = useState<number | null>(null); // 선택된 돌 인덱스
   const [lastMovedStone, setLastMovedStone] = useState<[number, number] | null>(null);
   const [timerSec, setTimerSec] = useState(30);
   const [timer, setTimer] = useState(timerSec);
   const timerRef = useRef<NodeJS.Timeout | null>(null);
+  const [infoMessage, setInfoMessage] = useState<string | null>(null);
 
   // placementOrder: [A, B, B, A]
   const placementOrder = [0, 1, 1, 0];
 
-  // placement phase: 돌 추가 배치
-  function handlePlacement(x: number, y: number) {
-    // 이미 돌이 있는 칸은 불가
-    if (stones.some(([sx, sy]) => sx === x && sy === y)) return;
+  // --- 돌 추가 배치 ---
+  function handlePlacement(r: number, c: number) {
+    if (stones.some(([sr, sc]) => sr === r && sc === c)) return;
     const owner = placementOrder[placementStep];
-    setStones([...stones, [x, y, owner]]);
+    setStones([...stones, [r, c, owner]]);
     if (placementStep === 3) {
       setPhase('move');
-      setTurn(0); // 파랑(A)부터 시작
+      setTurn(0);
     } else {
       setPlacementStep(placementStep + 1);
     }
   }
 
-  // 구역 및 소유권 계산
+  // --- 점수/구역 계산 ---
   const { areas, areaMap } = getAreas(stones, walls);
-  // 점수 계산
   const scores = [0, 0];
   areas.forEach((area) => {
     if (area.owners.length === 1) {
@@ -244,75 +229,106 @@ export default function WallBaduk() {
     }
   });
 
-  // 이동 가능 칸 계산
-  function getMovableCells(stoneIdx: number) {
-    const [sx, sy] = [stones[stoneIdx][0], stones[stoneIdx][1]];
+  // --- 이동 가능 칸 계산 ---
+  function getAvailableMoves(stoneIdx: number) {
+    const [sr, sc] = [stones[stoneIdx][0], stones[stoneIdx][1]];
     const result: [number, number][] = [];
     const straightDirs = [
       [0, 1],
       [1, 0],
       [0, -1],
-      [-1, 0], // 상하좌우
+      [-1, 0],
     ];
     const diagDirs = [
       [1, 1],
       [1, -1],
       [-1, 1],
-      [-1, -1], // 대각선
+      [-1, -1],
     ];
-    // 제자리
-    result.push([sx, sy]);
+    result.push([sr, sc]); // 제자리
     // 직선 1, 2칸
-    for (const [dx, dy] of straightDirs) {
+    for (const [dr, dc] of straightDirs) {
       for (let dist = 1; dist <= 2; dist++) {
-        const nx = sx + dx * dist;
-        const ny = sy + dy * dist;
-        if (nx < 0 || nx >= N || ny < 0 || ny >= N) break;
+        const nr = sr + dr * dist;
+        const nc = sc + dc * dist;
+        if (nr < 0 || nr >= N || nc < 0 || nc >= N) break;
         let blocked = false;
-        let cx = sx,
-          cy = sy;
+        let cr = sr,
+          cc = sc;
         for (let step = 1; step <= dist; step++) {
-          const tx = sx + dx * step;
-          const ty = sy + dy * step;
-          if (!canMoveStep(cx, cy, tx, ty, walls)) {
+          const tr = sr + dr * step;
+          const tc = sc + dc * step;
+          if (!checkEmptyWall(cr, cc, tr, tc, walls)) {
             blocked = true;
             break;
           }
-          if (step < dist && stones.some(([ox, oy]) => ox === tx && oy === ty)) {
+          if (step < dist && stones.some(([ox, oy]) => ox === tr && oy === tc)) {
             blocked = true;
             break;
           }
-          cx = tx;
-          cy = ty;
+          cr = tr;
+          cc = tc;
         }
         if (blocked) break;
-        if (stones.some(([ox, oy]) => ox === nx && oy === ny)) break;
-        result.push([nx, ny]);
+        if (stones.some(([ox, oy]) => ox === nr && oy === nc)) break;
+        result.push([nr, nc]);
       }
     }
-    // 대각선 1칸만
-    for (const [dx, dy] of diagDirs) {
-      const nx = sx + dx;
-      const ny = sy + dy;
-      if (nx < 0 || nx >= N || ny < 0 || ny >= N) continue;
-      if (!canMoveStep(sx, sy, nx, ny, walls)) continue;
-      if (stones.some(([ox, oy]) => ox === nx && oy === ny)) continue;
-      result.push([nx, ny]);
+    // 대각선 1칸
+    for (const [dr, dc] of diagDirs) {
+      const nr = sr + dr;
+      const nc = sc + dc;
+      if (nr < 0 || nr >= N || nc < 0 || nc >= N) continue;
+
+      if (nc > 0) {
+      }
+
+      if (checkStone(sr, nc, stones) && checkStone(nr, sc, stones) && checkStone(nr, nc, stones)) continue;
+      if (!checkEmptyWall(sr, sc, nr, nc, walls)) continue;
+      if (!checkEmptyWall(nr, nc, sr, sc, walls)) continue;
+      result.push([nr, nc]);
     }
     return result;
   }
 
-  function handleCellClick(x: number, y: number) {
-    if (phase !== 'move' || selectedStone === null) return; // move 단계가 아니거나 선택된 돌이 없으면 동작하지 않음
-    // 이동 단계: 선택된 돌만 이동 가능, 이동 가능 칸만 허용
-    const [sx, sy] = [stones[selectedStone][0], stones[selectedStone][1]];
-    if (!(sx === x && sy === y) && stones.some(([ox, oy]) => ox === x && oy === y)) return;
-    if (!isValidMove([sx, sy], [x, y], walls, stones)) return;
-    // 이동
-    const newStones: [number, number, number][] = stones.map((s, i) => (i === selectedStone ? [x, y, s[2]] : s));
+  function checkOneStepMove(
+    sr: number,
+    sc: number,
+    tr: number,
+    tc: number,
+    walls: { right: (number | null)[][]; down: (number | null)[][] },
+    stones: [number, number, number][]
+  ) {
+    if (sr === tr && sc === tc) return true;
+    return checkEmptyWall(sr, sc, tr, tc, walls) && !checkStone(tr, tc, stones);
+  }
+
+  // --- 돌 클릭(이동/선택) ---
+  function handleMoveOrSelect(r: number, c: number) {
+    if (phase !== 'move') return;
+    if (selectedStone === null) {
+      const idx = stones.findIndex(([sr, sc, owner]) => sr === r && sc === c && owner === turn);
+      if (idx !== -1) setSelectedStone(idx);
+      return;
+    }
+    const [sr, sc] = stones[selectedStone];
+    if (sr === r && sc === c) {
+      setSelectedStone(null);
+      setLastMovedStone([r, c]);
+      setPhase('wall');
+      return;
+    }
+    const idx = stones.findIndex(([dr, dc, dOwner]) => dr === r && dc === c && dOwner === turn);
+    if (idx !== -1) {
+      setSelectedStone(idx);
+      return;
+    }
+    const moves = getAvailableMoves(selectedStone);
+    if (!moves.some(([mr, mc]) => mr === r && mc === c)) return;
+    const newStones: [number, number, number][] = stones.map((s, i) => (i === selectedStone ? [r, c, s[2]] : s));
     setStones(newStones);
     setSelectedStone(null);
-    setLastMovedStone([x, y]); // 이동한 돌 좌표 저장
+    setLastMovedStone([r, c]);
     setPhase('wall');
   }
 
@@ -320,27 +336,44 @@ export default function WallBaduk() {
     setSelectedStone(null);
   }
 
-  function handleWallClick(x: number, y: number, dir: 'right' | 'down') {
+  // --- 벽 설치 가능 위치 계산 ---
+  const availableWalls =
+    phase === 'wall' && lastMovedStone
+      ? getAvailableWalls(lastMovedStone).filter((w) => walls[w.dir][w.r][w.c] === null)
+      : [];
+
+  // --- 벽 설치 ---
+  function handlePlaceWall(r: number, c: number, dir: 'right' | 'down') {
     if (gameEnd || phase !== 'wall') return;
-    if (walls[dir][x][y] !== null) return;
+    if (walls[dir][r][c] !== null) return;
     const newWalls = {
       right: walls.right.map((row) => [...row]),
       down: walls.down.map((row) => [...row]),
     };
-    newWalls[dir][x][y] = turn;
+    newWalls[dir][r][c] = turn;
     setWalls(newWalls);
     setPhase('move');
-    setLastMovedStone(null); // 벽 설치 후 초기화
-    // 게임 종료 체크
-    if (isGameOver(stones, newWalls)) {
-      setGameEnd(true);
-    } else {
-      setTurn((turn + 1) % 2);
-    }
+    setLastMovedStone(null);
+    if (isGameOver(stones, newWalls)) setGameEnd(true);
+    else setTurn((turn + 1) % 2);
   }
 
-  function handleWallMouseEnter(x: number, y: number, dir: 'right' | 'down') {
-    setHoverWall({ x, y, dir });
+  // --- 벽 설치 불가 시 턴 자동 넘김 ---
+  useEffect(() => {
+    if (phase === 'wall' && lastMovedStone) {
+      const available = getAvailableWalls(lastMovedStone).filter((w) => walls[w.dir][w.r][w.c] === null);
+      if (available.length === 0) {
+        setPhase('move');
+        setLastMovedStone(null);
+        setTurn((turn + 1) % 2);
+        setInfoMessage('놓을 수 있는 벽이 없어 턴이 자동으로 넘어갔습니다.');
+        setTimeout(() => setInfoMessage(null), 2000);
+      }
+    }
+  }, [phase, lastMovedStone, walls, turn]);
+
+  function handleWallMouseEnter(r: number, c: number, dir: 'right' | 'down') {
+    setHoverWall({ r, c, dir });
   }
   function handleWallMouseLeave() {
     setHoverWall(null);
@@ -358,18 +391,15 @@ export default function WallBaduk() {
     setLastMovedStone(null);
   }
 
-  // 벽 설치 가능 위치 계산
-  const availableWalls = phase === 'wall' && lastMovedStone ? getAvailableWalls(lastMovedStone) : [];
-
-  // 타이머 옵션 변경 시 초기화
+  // --- 타이머 옵션 변경 ---
   function handleTimerChange(sec: number) {
     setTimerSec(sec);
     setTimer(sec);
   }
 
-  // 타이머 관리
+  // --- 타이머 관리 ---
   useEffect(() => {
-    if (phase === 'placement' || gameEnd) return;
+    if (phase === 'placement' || gameEnd || timerSec === 0) return;
     setTimer(timerSec);
     if (timerRef.current) clearInterval(timerRef.current);
     timerRef.current = setInterval(() => {
@@ -380,37 +410,32 @@ export default function WallBaduk() {
     };
   }, [phase, turn, gameEnd, timerSec]);
 
-  // 타임아웃 시 자동 진행
+  // --- 타임아웃 시 자동 진행 ---
   useEffect(() => {
-    if (phase === 'placement' || gameEnd) return;
+    if (phase === 'placement' || gameEnd || timerSec === 0) return;
     if (timer <= 0) {
       if (phase === 'move') {
-        // 움직일 수 있는 돌 중 랜덤 돌의 제자리
         const myStones = stones.map((s, i) => ({ ...s, idx: i })).filter((s) => s[2] === turn);
-        const movable = myStones.filter((s) => getMovableCells(s.idx).length > 0);
+        const movable = myStones.filter((s) => getAvailableMoves(s.idx).length > 0);
         let targetIdx = null;
         if (movable.length > 0) {
           const rand = movable[Math.floor(Math.random() * movable.length)];
           targetIdx = rand.idx;
         } else {
-          // 모두 못 움직이면 아무 돌이나
           if (myStones.length > 0) targetIdx = myStones[0].idx;
         }
         if (targetIdx !== null) {
           setSelectedStone(targetIdx);
-          // 제자리 이동
-          setTimeout(() => handleCellClick(stones[targetIdx][0], stones[targetIdx][1]), 300);
+          setTimeout(() => handleMoveOrSelect(stones[targetIdx][0], stones[targetIdx][1]), 300);
         }
       } else if (phase === 'wall' && lastMovedStone) {
-        // 벽 설치 가능 위치 중 랜덤
-        const available = getAvailableWalls(lastMovedStone).filter((w) => walls[w.dir][w.x][w.y] === null);
+        const available = getAvailableWalls(lastMovedStone).filter((w) => walls[w.dir][w.r][w.c] === null);
         if (available.length > 0) {
           const rand = available[Math.floor(Math.random() * available.length)];
-          setTimeout(() => handleWallClick(rand.x, rand.y, rand.dir), 300);
+          setTimeout(() => handlePlaceWall(rand.r, rand.c, rand.dir), 300);
         }
       }
     }
-    // eslint-disable-next-line
   }, [timer]);
 
   return (
@@ -430,10 +455,12 @@ export default function WallBaduk() {
             onClick={() => phase === 'placement' && handleTimerChange(sec)}
             disabled={phase !== 'placement'}
           >
-            {sec}초
+            {sec === 0 ? '없음' : `${sec}초`}
           </button>
         ))}
-        {phase !== 'placement' && !gameEnd && <span className='ml-2 text-lg font-bold text-blue-700'>⏰ {timer}</span>}
+        {phase !== 'placement' && !gameEnd && timerSec > 0 && (
+          <span className='ml-2 text-lg font-bold text-blue-700'>⏰ {timer}</span>
+        )}
       </div>
       <div className='mb-2 text-gray-700 font-medium'>
         {gameEnd ? (
@@ -469,12 +496,12 @@ export default function WallBaduk() {
       <div className='relative' style={{ width: N * 48, height: N * 48 }}>
         <div className='grid grid-cols-7 grid-rows-7 border-2 border-gray-400 absolute top-0 left-0'>
           {Array.from({ length: N * N }).map((_, idx) => {
-            const x = Math.floor(idx / N);
-            const y = idx % N;
-            const stoneIdx = stones.findIndex(([sx, sy]) => sx === x && sy === y);
+            const r = Math.floor(idx / N);
+            const c = idx % N;
+            const stoneIdx = stones.findIndex(([sr, sc]) => sr === r && sc === c);
             const StoneIcon = stoneIdx !== -1 ? players[stones[stoneIdx][2]].icon : null;
             let bg = '';
-            const area = areaMap[x][y];
+            const area = areaMap[r][c];
             if (area !== -1) {
               if (areas[area].owners.length === 1) {
                 bg = areas[area].owners[0] === 0 ? 'bg-blue-50' : 'bg-red-50';
@@ -485,8 +512,8 @@ export default function WallBaduk() {
             // 이동 가능 칸 하이라이트
             let highlight = '';
             if (phase === 'move' && selectedStone !== null) {
-              const movables = getMovableCells(selectedStone);
-              if (movables.some(([mx, my]) => mx === x && my === y)) {
+              const moves = getAvailableMoves(selectedStone);
+              if (moves.some(([mr, mc]) => mr === r && mc === c)) {
                 highlight = 'bg-yellow-100 z-10';
               }
             }
@@ -494,23 +521,23 @@ export default function WallBaduk() {
               <button
                 key={idx}
                 className={`w-12 h-12 flex items-center justify-center border border-gray-300 text-2xl ${bg} ${highlight} hover:bg-green-300 transition-colors relative`}
-                onClick={() => (phase === 'placement' ? handlePlacement(x, y) : handleCellClick(x, y))}
+                onClick={() => (phase === 'placement' ? handlePlacement(r, c) : handleMoveOrSelect(r, c))}
                 disabled={
                   gameEnd ||
                   (phase === 'placement'
-                    ? stones.some(([sx, sy]) => sx === x && sy === y)
+                    ? stones.some(([sr, sc]) => sr === r && sc === c)
                     : phase !== 'move' ||
                       (selectedStone !== null
-                        ? !getMovableCells(selectedStone).some(([mx, my]) => mx === x && my === y)
-                        : stones.findIndex(([sx, sy, owner]) => sx === x && sy === y && owner === turn) === -1))
+                        ? !getAvailableMoves(selectedStone).some(([mr, mc]) => mr === r && mc === c)
+                        : stones.findIndex(([sr, sc, owner]) => sr === r && sc === c && owner === turn) === -1))
                 }
               >
                 {StoneIcon && <StoneIcon className={players[stones[stoneIdx][2]].color} />}
                 {/* 선택된 돌 테두리 */}
                 {phase === 'move' &&
                   selectedStone !== null &&
-                  stones[selectedStone][0] === x &&
-                  stones[selectedStone][1] === y && (
+                  stones[selectedStone][0] === r &&
+                  stones[selectedStone][1] === c && (
                     <span className='absolute inset-0 border-2 border-yellow-500 rounded-full pointer-events-none'></span>
                   )}
               </button>
@@ -519,16 +546,16 @@ export default function WallBaduk() {
         </div>
         {/* 벽 시각화 + 벽 설치 가이드 */}
         {/* 오른쪽 벽 */}
-        {walls.right.map((row, i) =>
-          row.map((v, j) => {
-            const isAvailable = availableWalls.some((w) => w.x === i && w.y === j && w.dir === 'right');
+        {walls.right.map((row, r) =>
+          row.map((v, c) => {
+            const isAvailable = availableWalls.some((w) => w.r === r && w.c === c && w.dir === 'right');
             return (
               <div
-                key={`r${i}-${j}`}
+                key={`r${r}-${c}`}
                 className={`absolute`}
                 style={{
-                  left: 48 * (j + 1) - 4,
-                  top: 48 * i + 8,
+                  left: 48 * (c + 1) - 4,
+                  top: 48 * r + 8,
                   width: 8,
                   height: 32,
                   borderRadius: 4,
@@ -536,8 +563,8 @@ export default function WallBaduk() {
                   backgroundColor:
                     hoverWall &&
                     hoverWall.dir === 'right' &&
-                    hoverWall.x === i &&
-                    hoverWall.y === j &&
+                    hoverWall.r === r &&
+                    hoverWall.c === c &&
                     phase === 'wall' &&
                     v === null &&
                     isAvailable
@@ -552,17 +579,17 @@ export default function WallBaduk() {
                     v !== null ||
                     (hoverWall &&
                       hoverWall.dir === 'right' &&
-                      hoverWall.x === i &&
-                      hoverWall.y === j &&
+                      hoverWall.r === r &&
+                      hoverWall.c === c &&
                       phase === 'wall' &&
                       v === null &&
                       isAvailable)
                       ? 1
                       : 0.2,
                 }}
-                onClick={() => phase === 'wall' && v === null && isAvailable && handleWallClick(i, j, 'right')}
+                onClick={() => phase === 'wall' && v === null && isAvailable && handlePlaceWall(r, c, 'right')}
                 onMouseEnter={() =>
-                  phase === 'wall' && v === null && isAvailable && handleWallMouseEnter(i, j, 'right')
+                  phase === 'wall' && v === null && isAvailable && handleWallMouseEnter(r, c, 'right')
                 }
                 onMouseLeave={handleWallMouseLeave}
               />
@@ -570,16 +597,16 @@ export default function WallBaduk() {
           })
         )}
         {/* 아래쪽 벽 */}
-        {walls.down.map((row, i) =>
-          row.map((v, j) => {
-            const isAvailable = availableWalls.some((w) => w.x === i && w.y === j && w.dir === 'down');
+        {walls.down.map((row, r) =>
+          row.map((v, c) => {
+            const isAvailable = availableWalls.some((w) => w.r === r && w.c === c && w.dir === 'down');
             return (
               <div
-                key={`d${i}-${j}`}
+                key={`d${r}-${c}`}
                 className={`absolute`}
                 style={{
-                  left: 48 * j + 8,
-                  top: 48 * (i + 1) - 4,
+                  left: 48 * c + 8,
+                  top: 48 * (r + 1) - 4,
                   width: 32,
                   height: 8,
                   borderRadius: 4,
@@ -587,8 +614,8 @@ export default function WallBaduk() {
                   backgroundColor:
                     hoverWall &&
                     hoverWall.dir === 'down' &&
-                    hoverWall.x === i &&
-                    hoverWall.y === j &&
+                    hoverWall.r === r &&
+                    hoverWall.c === c &&
                     phase === 'wall' &&
                     v === null &&
                     isAvailable
@@ -603,16 +630,16 @@ export default function WallBaduk() {
                     v !== null ||
                     (hoverWall &&
                       hoverWall.dir === 'down' &&
-                      hoverWall.x === i &&
-                      hoverWall.y === j &&
+                      hoverWall.r === r &&
+                      hoverWall.c === c &&
                       phase === 'wall' &&
                       v === null &&
                       isAvailable)
                       ? 1
                       : 0.2,
                 }}
-                onClick={() => phase === 'wall' && v === null && isAvailable && handleWallClick(i, j, 'down')}
-                onMouseEnter={() => phase === 'wall' && v === null && isAvailable && handleWallMouseEnter(i, j, 'down')}
+                onClick={() => phase === 'wall' && v === null && isAvailable && handlePlaceWall(r, c, 'down')}
+                onMouseEnter={() => phase === 'wall' && v === null && isAvailable && handleWallMouseEnter(r, c, 'down')}
                 onMouseLeave={handleWallMouseLeave}
               />
             );
