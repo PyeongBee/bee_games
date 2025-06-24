@@ -2,7 +2,7 @@
 import { useState } from 'react';
 import { Swords } from 'lucide-react';
 
-const N = 8;
+const BOARD_SIZES = [5, 6, 7, 8];
 const moves = [
   [2, 1],
   [1, 2],
@@ -15,11 +15,23 @@ const moves = [
 ];
 
 export default function KnightsTour() {
+  const [boardSize, setBoardSize] = useState(8);
+  const N = boardSize;
   const [knight, setKnight] = useState<[number, number] | null>(null);
   const [visited, setVisited] = useState(Array.from({ length: N }, () => Array(N).fill(false)));
   const [moveCount, setMoveCount] = useState(0);
   const [gameOver, setGameOver] = useState(false);
   const [started, setStarted] = useState(false);
+
+  // 보드 크기 변경 시 상태 초기화
+  function handleSizeChange(size: number) {
+    setBoardSize(size);
+    setKnight(null);
+    setVisited(Array.from({ length: size }, () => Array(size).fill(false)));
+    setMoveCount(0);
+    setGameOver(false);
+    setStarted(false);
+  }
 
   function handleCellClick(x: number, y: number) {
     if (!started) {
@@ -57,8 +69,32 @@ export default function KnightsTour() {
   return (
     <div className='flex flex-col items-center gap-6'>
       <h2 className='text-2xl font-bold mb-2 text-amber-800'>기사의 여행</h2>
+      <div className='flex gap-2 mb-2'>
+        {BOARD_SIZES.map((size) => (
+          <button
+            key={size}
+            className={`px-3 py-1 rounded border text-sm font-semibold transition-colors
+              ${
+                boardSize === size
+                  ? 'bg-yellow-400 text-white border-yellow-500'
+                  : 'bg-white border-gray-300 hover:bg-yellow-100'
+              }
+              ${started ? 'opacity-50 cursor-not-allowed' : ''}`}
+            onClick={() => !started && handleSizeChange(size)}
+            disabled={started}
+          >
+            {size}x{size}
+          </button>
+        ))}
+      </div>
       <div className='flex flex-col items-center gap-2'>
-        <div className='grid grid-cols-8 grid-rows-8 border-2 border-gray-400'>
+        <div
+          className='border-2 border-gray-400 grid'
+          style={{
+            gridTemplateColumns: `repeat(${N}, minmax(0, 1fr))`,
+            gridTemplateRows: `repeat(${N}, minmax(0, 1fr))`,
+          }}
+        >
           {Array.from({ length: N * N }).map((_, idx) => {
             const x = Math.floor(idx / N);
             const y = idx % N;
@@ -75,13 +111,19 @@ export default function KnightsTour() {
               <button
                 key={idx}
                 className={`w-10 h-10 flex items-center justify-center border border-gray-300 text-lg
-                  ${isKnight ? 'bg-yellow-300' : isVisited ? 'bg-gray-200' : 'bg-white'}
-                  ${isNext ? 'ring-2 ring-yellow-400' : ''}
+                  ${
+                    isKnight
+                      ? 'bg-yellow-300'
+                      : isVisited
+                      ? 'bg-gray-200'
+                      : isNext
+                      ? 'bg-yellow-100 hover:bg-green-300'
+                      : 'bg-white hover:bg-gray-100'
+                  }
                   ${(x + y) % 2 === 0 ? '' : 'bg-gray-50'}
-                  ${canSelectStart ? 'hover:bg-yellow-100 cursor-pointer' : ''}
                   transition-colors`}
                 onClick={() => handleCellClick(x, y)}
-                disabled={started ? isKnight || isVisited || gameOver || !isNext : false}
+                disabled={isKnight || isVisited || gameOver || (started && !isNext)}
               >
                 {isKnight ? (
                   <Swords className='w-6 h-6 text-yellow-700' />
