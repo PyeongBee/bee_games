@@ -623,6 +623,7 @@ export default function WallBaduk() {
         <span className='text-blue-700'>플레이어 1 점수: {scores[0]}</span>
         <span className='text-red-700'>플레이어 2 점수: {scores[1]}</span>
       </div>
+      {infoMessage && <div className='mt-2 text-base text-gray-700 font-medium'>{infoMessage}</div>}
       {gameEnd && (
         <div className='mt-2 text-xl font-bold'>
           {scores[0] > scores[1] ? '플레이어 1 승리!' : scores[0] < scores[1] ? '플레이어 2 승리!' : '무승부!'}
