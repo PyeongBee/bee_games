@@ -1,4 +1,7 @@
+'use client';
+
 import { Swords, Grid } from 'lucide-react';
+import Link from 'next/link';
 
 const games = [
   {
@@ -19,19 +22,21 @@ export default function Sidebar() {
       <div className='flex flex-col gap-6 w-full items-center'>
         {/* 로고 또는 플랫폼 아이콘 */}
         <div className='mb-8 mt-2'>
-          <span className='text-2xl font-bold text-yellow-500'>🐝</span>
+          <Link href='/'>
+            <span className='text-2xl font-bold text-yellow-500'>🐝</span>
+          </Link>
         </div>
         {/* 게임 목록 */}
         <nav className='flex flex-col gap-6 w-full items-center'>
           {games.map((game) => (
-            <a
+            <Link
               key={game.name}
               href={game.href}
               className='flex flex-col items-center gap-1 text-gray-700 hover:text-yellow-500 transition-colors group'
             >
               <game.icon className='w-7 h-7 group-hover:scale-110 transition-transform' />
               <span className='text-xs mt-1 whitespace-nowrap font-medium'>{game.name}</span>
-            </a>
+            </Link>
           ))}
         </nav>
       </div>

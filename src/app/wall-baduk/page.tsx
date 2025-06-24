@@ -1,5 +1,5 @@
 'use client';
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Circle, Square } from 'lucide-react';
 
 const N = 7;
@@ -225,6 +225,8 @@ function isGameOver(
   return true;
 }
 
+const TIMER_OPTIONS = [15, 30, 60];
+
 export default function WallBaduk() {
   // stones: [x, y, owner] 배열
   const [stones, setStones] = useState(initialStones);
@@ -236,6 +238,9 @@ export default function WallBaduk() {
   const [hoverWall, setHoverWall] = useState<{ x: number; y: number; dir: 'right' | 'down' } | null>(null);
   const [selectedStone, setSelectedStone] = useState<number | null>(null); // 선택된 돌 인덱스
   const [lastMovedStone, setLastMovedStone] = useState<[number, number] | null>(null);
+  const [timerSec, setTimerSec] = useState(30);
+  const [timer, setTimer] = useState(timerSec);
+  const timerRef = useRef<NodeJS.Timeout | null>(null);
 
   // placementOrder: [A, B, B, A]
   const placementOrder = [0, 1, 1, 0];
@@ -389,9 +394,81 @@ export default function WallBaduk() {
   // 벽 설치 가능 위치 계산
   const availableWalls = phase === 'wall' && lastMovedStone ? getAvailableWalls(lastMovedStone) : [];
 
+  // 타이머 옵션 변경 시 초기화
+  function handleTimerChange(sec: number) {
+    setTimerSec(sec);
+    setTimer(sec);
+  }
+
+  // 타이머 관리
+  useEffect(() => {
+    if (phase === 'placement' || gameEnd) return;
+    setTimer(timerSec);
+    if (timerRef.current) clearInterval(timerRef.current);
+    timerRef.current = setInterval(() => {
+      setTimer((t) => t - 1);
+    }, 1000);
+    return () => {
+      if (timerRef.current) clearInterval(timerRef.current);
+    };
+    // eslint-disable-next-line
+  }, [phase, turn, gameEnd, timerSec]);
+
+  // 타임아웃 시 자동 진행
+  useEffect(() => {
+    if (phase === 'placement' || gameEnd) return;
+    if (timer <= 0) {
+      if (phase === 'move') {
+        // 움직일 수 있는 돌 중 랜덤 돌의 제자리
+        const myStones = stones.map((s, i) => ({ ...s, idx: i })).filter((s) => s[2] === turn);
+        const movable = myStones.filter((s) => getMovableCells(s.idx).length > 0);
+        let targetIdx = null;
+        if (movable.length > 0) {
+          const rand = movable[Math.floor(Math.random() * movable.length)];
+          targetIdx = rand.idx;
+        } else {
+          // 모두 못 움직이면 아무 돌이나
+          if (myStones.length > 0) targetIdx = myStones[0].idx;
+        }
+        if (targetIdx !== null) {
+          setSelectedStone(targetIdx);
+          // 제자리 이동
+          setTimeout(() => handleCellClick(stones[targetIdx][0], stones[targetIdx][1]), 300);
+        }
+      } else if (phase === 'wall' && lastMovedStone) {
+        // 벽 설치 가능 위치 중 랜덤
+        const available = getAvailableWalls(lastMovedStone).filter((w) => walls[w.dir][w.x][w.y] === null);
+        if (available.length > 0) {
+          const rand = available[Math.floor(Math.random() * available.length)];
+          setTimeout(() => handleWallClick(rand.x, rand.y, rand.dir), 300);
+        }
+      }
+    }
+    // eslint-disable-next-line
+  }, [timer]);
+
   return (
     <div className='flex flex-col items-center gap-6'>
       <h2 className='text-2xl font-bold mb-2 text-amber-800'>벽바둑</h2>
+      <div className='flex gap-2 mb-2 items-center'>
+        {TIMER_OPTIONS.map((sec) => (
+          <button
+            key={sec}
+            className={`px-3 py-1 rounded border text-sm font-semibold transition-colors
+              ${
+                timerSec === sec
+                  ? 'bg-blue-400 text-white border-blue-500'
+                  : 'bg-white border-gray-300 hover:bg-blue-100'
+              }
+              ${phase !== 'placement' ? 'opacity-50 cursor-not-allowed' : ''}`}
+            onClick={() => phase === 'placement' && handleTimerChange(sec)}
+            disabled={phase !== 'placement'}
+          >
+            {sec}초
+          </button>
+        ))}
+        {phase !== 'placement' && !gameEnd && <span className='ml-2 text-lg font-bold text-blue-700'>⏰ {timer}</span>}
+      </div>
       <div className='mb-2 text-gray-700 font-medium'>
         {gameEnd ? (
           <span className='text-xl font-bold text-green-700'>게임 종료!</span>
