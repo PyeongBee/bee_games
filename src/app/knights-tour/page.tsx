@@ -66,7 +66,6 @@ export default function KnightsTour() {
     return () => {
       if (timerRef.current) clearInterval(timerRef.current);
     };
-    // eslint-disable-next-line
   }, [moveCount, started, gameOver, timerSec]);
 
   // 타임아웃 시 실패 처리
@@ -199,7 +198,6 @@ export default function KnightsTour() {
               !isKnight &&
               !isVisited &&
               moves.some(([dx, dy]) => knight[0] + dx === x && knight[1] + dy === y);
-            const canSelectStart = !started;
             return (
               <button
                 key={idx}

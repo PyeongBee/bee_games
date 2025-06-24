@@ -27,31 +27,6 @@ function createEmptyWalls() {
 }
 
 // 돌을 뛰어넘지 못하게, 경로에 돌이 있는지 체크
-function isPathBlocked(from: [number, number], to: [number, number], stones: [number, number, number][]) {
-  const [fx, fy] = from;
-  const [tx, ty] = to;
-  // 한 칸, 두 칸, ㄱ자, 제자리만 허용
-  if (fx === tx && fy === ty) return false;
-  // 직선
-  if (fx === tx) {
-    const minY = Math.min(fy, ty);
-    const maxY = Math.max(fy, ty);
-    for (let y = minY + 1; y < maxY; y++) {
-      if (stones.some(([sx, sy]) => sx === fx && sy === y)) return true;
-    }
-  } else if (fy === ty) {
-    const minX = Math.min(fx, tx);
-    const maxX = Math.max(fx, tx);
-    for (let x = minX + 1; x < maxX; x++) {
-      if (stones.some(([sx, sy]) => sx === x && sy === fy)) return true;
-    }
-  } else if (Math.abs(fx - tx) === 1 && Math.abs(fy - ty) === 1) {
-    // ㄱ자: 중간 경로 체크
-    if (stones.some(([sx, sy]) => (sx === fx && sy === ty) || (sx === tx && sy === fy))) return true;
-  }
-  return false;
-}
-
 function isValidMove(
   from: [number, number],
   to: [number, number],
@@ -76,15 +51,15 @@ function isValidMove(
   // 직선 1, 2칸
   for (const [dx, dy] of straightDirs) {
     for (let dist = 1; dist <= 2; dist++) {
-      let nx = fx + dx * dist;
-      let ny = fy + dy * dist;
+      const nx = fx + dx * dist;
+      const ny = fy + dy * dist;
       if (nx === tx && ny === ty) {
         let blocked = false;
         let cx = fx,
           cy = fy;
         for (let step = 1; step <= dist; step++) {
-          let tx2 = fx + dx * step;
-          let ty2 = fy + dy * step;
+          const tx2 = fx + dx * step;
+          const ty2 = fy + dy * step;
           if (!canMoveStep(cx, cy, tx2, ty2, walls)) {
             blocked = true;
             break;
@@ -104,8 +79,8 @@ function isValidMove(
   }
   // 대각선 1칸만
   for (const [dx, dy] of diagDirs) {
-    let nx = fx + dx;
-    let ny = fy + dy;
+    const nx = fx + dx;
+    const ny = fy + dy;
     if (nx === tx && ny === ty) {
       if (!canMoveStep(fx, fy, nx, ny, walls)) return false;
       if (stones.some(([ox, oy]) => ox === nx && oy === ny)) return false;
@@ -197,7 +172,7 @@ function getAreas(
       }
       // 구역 내 돌 소유자 판정
       const owners: number[] = [];
-      stones.forEach((s, idx) => {
+      stones.forEach((s) => {
         if (cells.some(([x, y]) => s[0] === x && s[1] === y)) owners.push(s[2]);
       });
       areas.push({ cells, owners });
@@ -290,15 +265,15 @@ export default function WallBaduk() {
     // 직선 1, 2칸
     for (const [dx, dy] of straightDirs) {
       for (let dist = 1; dist <= 2; dist++) {
-        let nx = sx + dx * dist;
-        let ny = sy + dy * dist;
+        const nx = sx + dx * dist;
+        const ny = sy + dy * dist;
         if (nx < 0 || nx >= N || ny < 0 || ny >= N) break;
         let blocked = false;
         let cx = sx,
           cy = sy;
         for (let step = 1; step <= dist; step++) {
-          let tx = sx + dx * step;
-          let ty = sy + dy * step;
+          const tx = sx + dx * step;
+          const ty = sy + dy * step;
           if (!canMoveStep(cx, cy, tx, ty, walls)) {
             blocked = true;
             break;
@@ -317,8 +292,8 @@ export default function WallBaduk() {
     }
     // 대각선 1칸만
     for (const [dx, dy] of diagDirs) {
-      let nx = sx + dx;
-      let ny = sy + dy;
+      const nx = sx + dx;
+      const ny = sy + dy;
       if (nx < 0 || nx >= N || ny < 0 || ny >= N) continue;
       if (!canMoveStep(sx, sy, nx, ny, walls)) continue;
       if (stones.some(([ox, oy]) => ox === nx && oy === ny)) continue;
@@ -328,21 +303,13 @@ export default function WallBaduk() {
   }
 
   function handleCellClick(x: number, y: number) {
-    if (gameEnd || phase !== 'move') return;
-    // 돌 선택 단계
-    if (selectedStone === null) {
-      // 내 돌만 선택 가능
-      const idx = stones.findIndex((s) => s[0] === x && s[1] === y && s[2] === turn);
-      if (idx === -1) return;
-      setSelectedStone(idx);
-      return;
-    }
+    if (phase !== 'move' || selectedStone === null) return; // move 단계가 아니거나 선택된 돌이 없으면 동작하지 않음
     // 이동 단계: 선택된 돌만 이동 가능, 이동 가능 칸만 허용
     const [sx, sy] = [stones[selectedStone][0], stones[selectedStone][1]];
     if (!(sx === x && sy === y) && stones.some(([ox, oy]) => ox === x && oy === y)) return;
     if (!isValidMove([sx, sy], [x, y], walls, stones)) return;
     // 이동
-    const newStones = stones.map((s, i) => (i === selectedStone ? [x, y, s[2]] : s));
+    const newStones: [number, number, number][] = stones.map((s, i) => (i === selectedStone ? [x, y, s[2]] : s));
     setStones(newStones);
     setSelectedStone(null);
     setLastMovedStone([x, y]); // 이동한 돌 좌표 저장
@@ -411,7 +378,6 @@ export default function WallBaduk() {
     return () => {
       if (timerRef.current) clearInterval(timerRef.current);
     };
-    // eslint-disable-next-line
   }, [phase, turn, gameEnd, timerSec]);
 
   // 타임아웃 시 자동 진행
