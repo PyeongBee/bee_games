@@ -149,14 +149,14 @@ export default function WallBaduk() {
   const [showRules, setShowRules] = useState(false);
 
   // 반응형 크기 계산
-  const cellSize = isMobile ? 32 : 48;
+  const cellSize = isMobile ? 40 : 56;
   const wallThickness = cellSize / 6;
   const wallOffset = cellSize / 12;
 
   // 화면 크기 감지
   useEffect(() => {
     const checkIsMobile = () => {
-      setIsMobile(window.innerWidth < 768);
+      setIsMobile(window.innerWidth < 640);
     };
 
     checkIsMobile();

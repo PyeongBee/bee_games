@@ -9,7 +9,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
   // 화면 크기 감지
   useEffect(() => {
     const checkIsMobile = () => {
-      setIsMobile(window.innerWidth < 768);
+      setIsMobile(window.innerWidth < 640);
     };
 
     checkIsMobile();
