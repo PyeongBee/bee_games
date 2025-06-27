@@ -77,44 +77,63 @@ function getAreas(
     [0, -1, 'right'],
     [-1, 0, 'down'],
   ];
-  for (let i = 0; i < MAP_SIZE; i++) {
-    for (let j = 0; j < MAP_SIZE; j++) {
-      if (visited[i][j]) continue;
-      // BFS로 구역 탐색
-      const queue: [number, number][] = [[i, j]];
-      visited[i][j] = true;
-      areaMap[i][j] = areaId;
-      const cells: [number, number][] = [[i, j]];
-      while (queue.length) {
-        const [r, c] = queue.shift()!;
-        for (let d = 0; d < 4; d++) {
-          const dr = Number(dirs[d][0]);
-          const dc = Number(dirs[d][1]);
-          const nr = Number(r) + dr;
-          const nc = Number(c) + dc;
-          if (nr < 0 || nr >= MAP_SIZE || nc < 0 || nc >= MAP_SIZE) continue;
-          // 벽 체크
-          if (d === 0 && walls.right[r][c] !== null) continue; // 오른쪽
-          if (d === 1 && walls.down[r][c] !== null) continue; // 아래
-          if (d === 2 && walls.right[nr][nc] !== null) continue; // 왼쪽
-          if (d === 3 && walls.down[nr][nc] !== null) continue; // 위
-          if (!visited[nr][nc]) {
-            visited[nr][nc] = true;
-            areaMap[nr][nc] = areaId;
-            queue.push([nr, nc]);
-            cells.push([nr, nc]);
+
+  // 각 돌에서 시작하여 영역 탐색
+  for (let stoneIdx = 0; stoneIdx < stones.length; stoneIdx++) {
+    const [startR, startC, stoneOwner] = stones[stoneIdx];
+
+    // 이미 방문한 돌이면 건너뛰기
+    if (visited[startR][startC]) continue;
+
+    // BFS로 구역 탐색
+    const queue: [number, number][] = [[startR, startC]];
+    visited[startR][startC] = true;
+    areaMap[startR][startC] = areaId;
+    const cells: [number, number][] = [[startR, startC]];
+    const ownersInArea: number[] = [stoneOwner];
+
+    while (queue.length) {
+      const [r, c] = queue.shift()!;
+      for (let d = 0; d < 4; d++) {
+        const dr = Number(dirs[d][0]);
+        const dc = Number(dirs[d][1]);
+        const nr = Number(r) + dr;
+        const nc = Number(c) + dc;
+        if (nr < 0 || nr >= MAP_SIZE || nc < 0 || nc >= MAP_SIZE) continue;
+
+        // 벽 체크
+        if (d === 0 && walls.right[r][c] !== null) continue; // 오른쪽
+        if (d === 1 && walls.down[r][c] !== null) continue; // 아래
+        if (d === 2 && walls.right[nr][nc] !== null) continue; // 왼쪽
+        if (d === 3 && walls.down[nr][nc] !== null) continue; // 위
+
+        if (!visited[nr][nc]) {
+          visited[nr][nc] = true;
+          areaMap[nr][nc] = areaId;
+          queue.push([nr, nc]);
+          cells.push([nr, nc]);
+
+          // 해당 위치에 돌이 있는지 확인하고 소유자 추가
+          const stoneAtPos = stones.find(([sr, sc]) => sr === nr && sc === nc);
+          if (stoneAtPos) {
+            ownersInArea.push(stoneAtPos[2]);
           }
         }
       }
-      // 구역 내 돌 소유자 판정
-      const owners: number[] = [];
-      stones.forEach((s) => {
-        if (cells.some(([r, c]) => s[0] === r && s[1] === c)) owners.push(s[2]);
-      });
-      areas.push({ cells, owners });
-      areaId++;
     }
+
+    // 영역 내에 다른 색의 돌이 없으면 소유 영역으로 판단
+    const uniqueOwners = [...new Set(ownersInArea)];
+    if (uniqueOwners.length === 1) {
+      areas.push({ cells, owners: [uniqueOwners[0]] });
+    } else {
+      // 다른 색의 돌이 있으면 소유권 없음
+      areas.push({ cells, owners: [] });
+    }
+
+    areaId++;
   }
+
   return { areas, areaMap };
 }
 
