@@ -3,7 +3,7 @@ import { useState, useEffect, useRef } from 'react';
 import { Swords } from 'lucide-react';
 
 const BOARD_SIZES = [5, 6, 7, 8];
-const TIMER_OPTIONS = [15, 30, 60];
+const TIMER_OPTIONS = [0, 15, 30, 60];
 const moves = [
   [2, 1],
   [1, 2],
@@ -31,12 +31,13 @@ export default function KnightsTour() {
   const [moveCount, setMoveCount] = useState(0);
   const [gameOver, setGameOver] = useState(false);
   const [started, setStarted] = useState(false);
-  const [timerSec, setTimerSec] = useState(30);
+  const [timerSec, setTimerSec] = useState(0);
   const [timer, setTimer] = useState(timerSec);
   const timerRef = useRef<NodeJS.Timeout | null>(null);
   const [totalTime, setTotalTime] = useState(0);
   const totalTimerRef = useRef<NodeJS.Timeout | null>(null);
   const [failReason, setFailReason] = useState<null | 'timeout' | 'no-move' | 'success'>(null);
+  const [showRules, setShowRules] = useState(false);
 
   // 타이머 옵션 변경 시 초기화
   function handleTimerChange(sec: number) {
@@ -57,7 +58,7 @@ export default function KnightsTour() {
 
   // 타이머 관리
   useEffect(() => {
-    if (!started || gameOver) return;
+    if (!started || gameOver || timerSec === 0) return;
     setTimer(timerSec);
     if (timerRef.current) clearInterval(timerRef.current);
     timerRef.current = setInterval(() => {
@@ -70,13 +71,13 @@ export default function KnightsTour() {
 
   // 타임아웃 시 실패 처리
   useEffect(() => {
-    if (!started || gameOver) return;
+    if (!started || gameOver || timerSec === 0) return;
     if (timer <= 0) {
       setGameOver(true);
       setFailReason('timeout');
     }
     // eslint-disable-next-line
-  }, [timer]);
+  }, [timer, timerSec]);
 
   // 누적 타이머 관리
   useEffect(() => {
@@ -140,8 +141,22 @@ export default function KnightsTour() {
   }
 
   return (
-    <div className='flex flex-col items-center gap-6'>
-      <h2 className='text-2xl font-bold mb-2 text-amber-800'>기사의 여행</h2>
+    <div className='flex flex-col items-center gap-4 md:gap-6 p-4'>
+      <div className='flex items-center gap-3 mb-2'>
+        <h2 className='text-xl md:text-2xl font-bold text-amber-800'>기사의 여행</h2>
+        <button
+          onClick={() => setShowRules(true)}
+          className='px-3 py-1 text-xs md:text-sm bg-amber-100 text-amber-800 rounded-lg hover:bg-amber-200 transition-colors font-medium'
+        >
+          게임규칙
+        </button>
+      </div>
+
+      {/* 홈페이지 스타일 게임 설명 */}
+      <p className='text-sm md:text-base text-gray-600 text-center max-w-md'>
+        체스의 기사처럼 L자 모양으로 이동하며 모든 칸을 한 번씩 방문하는 퍼즐 게임입니다.
+      </p>
+
       <div className='flex gap-2 mb-2'>
         {BOARD_SIZES.map((size) => (
           <button
@@ -174,10 +189,12 @@ export default function KnightsTour() {
             onClick={() => !started && handleTimerChange(sec)}
             disabled={started}
           >
-            {sec}초
+            {sec === 0 ? '없음' : `${sec}초`}
           </button>
         ))}
-        {started && !gameOver && <span className='ml-2 text-lg font-bold text-blue-700'>⏰ {timer}</span>}
+        {started && !gameOver && timerSec > 0 && (
+          <span className='ml-2 text-lg font-bold text-blue-700'>⏰ {timer}</span>
+        )}
       </div>
       <div className='flex flex-col items-center gap-2'>
         <div
@@ -249,6 +266,101 @@ export default function KnightsTour() {
           <div className='mt-4 text-green-600 font-bold'>축하합니다! 모든 칸을 방문했습니다 🎉</div>
         )}
       </div>
+
+      {/* 게임 규칙 모달 */}
+      {showRules && (
+        <div className='fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4'>
+          <div className='bg-white rounded-lg shadow-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto'>
+            <div className='p-6'>
+              <div className='flex justify-between items-center mb-4'>
+                <h3 className='text-xl font-bold text-gray-800'>기사의 여행 게임 규칙</h3>
+                <button
+                  onClick={() => setShowRules(false)}
+                  className='text-gray-500 hover:text-gray-700 text-2xl font-bold'
+                >
+                  ×
+                </button>
+              </div>
+
+              <div className='space-y-4 text-sm md:text-base text-gray-700'>
+                <div>
+                  <h4 className='font-semibold text-gray-800 mb-2'>게임 목표</h4>
+                  <p>
+                    체스의 기사처럼 L자 모양으로 이동하여 체스판의 모든 칸을 정확히 한 번씩 방문하는 퍼즐 게임입니다.
+                  </p>
+                </div>
+
+                <div>
+                  <h4 className='font-semibold text-gray-800 mb-2'>기사의 이동</h4>
+                  <ul className='list-disc list-inside space-y-1'>
+                    <li>
+                      <strong>L자 이동</strong>: 가로 2칸 + 세로 1칸 또는 가로 1칸 + 세로 2칸
+                    </li>
+                    <li>
+                      <strong>8방향</strong>: 기사는 8개의 방향으로 이동할 수 있습니다
+                    </li>
+                    <li>
+                      <strong>한 번 방문</strong>: 이미 방문한 칸은 다시 방문할 수 없습니다
+                    </li>
+                  </ul>
+                </div>
+
+                <div>
+                  <h4 className='font-semibold text-gray-800 mb-2'>게임 진행</h4>
+                  <ol className='list-decimal list-inside space-y-2'>
+                    <li>
+                      <strong>보드 크기 선택</strong>: 5x5부터 8x8까지 선택 가능
+                    </li>
+                    <li>
+                      <strong>시작 위치 선택</strong>: 체스판에서 기사를 시작할 위치를 클릭
+                    </li>
+                    <li>
+                      <strong>기사 이동</strong>: 하이라이트된 칸을 클릭하여 기사 이동
+                    </li>
+                    <li>
+                      <strong>완료 조건</strong>: 모든 칸을 한 번씩 방문하면 성공
+                    </li>
+                  </ol>
+                </div>
+
+                <div>
+                  <h4 className='font-semibold text-gray-800 mb-2'>게임 설정</h4>
+                  <ul className='list-disc list-inside space-y-1'>
+                    <li>
+                      <strong>타이머</strong>: 각 이동마다 제한 시간 설정 가능 (15초, 30초, 60초)
+                    </li>
+                    <li>
+                      <strong>시간 초과</strong>: 제한 시간 내에 이동하지 못하면 실패
+                    </li>
+                    <li>
+                      <strong>이동 불가</strong>: 더 이상 이동할 수 있는 칸이 없으면 실패
+                    </li>
+                  </ul>
+                </div>
+
+                <div>
+                  <h4 className='font-semibold text-gray-800 mb-2'>전략 팁</h4>
+                  <ul className='list-disc list-inside space-y-1'>
+                    <li>가장자리나 모서리에서 시작하는 것이 일반적으로 유리합니다</li>
+                    <li>이동 가능한 칸이 적은 칸을 우선적으로 방문하세요</li>
+                    <li>중앙 지역은 나중에 방문하는 것이 좋습니다</li>
+                    <li>시간 제한이 있을 때는 신속하게 판단하세요</li>
+                  </ul>
+                </div>
+
+                <div>
+                  <h4 className='font-semibold text-gray-800 mb-2'>역사</h4>
+                  <p>
+                    기사의 여행(Knight&apos;s Tour)은 수학과 체스의 고전적인 문제로, 9세기부터 연구되어 온 퍼즐입니다.
+                    모든 칸을 한 번씩 방문하는 해가 존재하는지, 그리고 그 해를 찾는 방법에 대한 수학적 연구가 활발히
+                    이루어져 왔습니다.
+                  </p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
