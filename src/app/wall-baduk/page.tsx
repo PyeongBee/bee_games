@@ -141,11 +141,12 @@ export default function WallBaduk() {
   const [hoverWall, setHoverWall] = useState<{ r: number; c: number; dir: 'right' | 'down' } | null>(null);
   const [selectedStone, setSelectedStone] = useState<number | null>(null); // 선택된 돌 인덱스
   const [lastMovedStone, setLastMovedStone] = useState<[number, number] | null>(null);
-  const [timerSec, setTimerSec] = useState(30);
+  const [timerSec, setTimerSec] = useState(0);
   const [timer, setTimer] = useState(timerSec);
   const timerRef = useRef<NodeJS.Timeout | null>(null);
   const [infoMessage, setInfoMessage] = useState<string | null>(null);
   const [isMobile, setIsMobile] = useState(false);
+  const [showRules, setShowRules] = useState(false);
 
   // 반응형 크기 계산
   const cellSize = isMobile ? 32 : 48;
@@ -387,7 +388,20 @@ export default function WallBaduk() {
 
   return (
     <div className='flex flex-col items-center gap-4 md:gap-6 p-4'>
-      <h2 className='text-xl md:text-2xl font-bold mb-2 text-amber-800'>벽바둑</h2>
+      <div className='flex items-center gap-3 mb-2'>
+        <h2 className='text-xl md:text-2xl font-bold text-amber-800'>벽바둑</h2>
+        <button
+          onClick={() => setShowRules(true)}
+          className='px-3 py-1 text-xs md:text-sm bg-amber-100 text-amber-800 rounded-lg hover:bg-amber-200 transition-colors font-medium'
+        >
+          게임규칙
+        </button>
+      </div>
+
+      <p className='text-sm md:text-base text-gray-600 text-center max-w-md'>
+        돌을 움직이고 벽을 설치해 영역을 나누는 전략 보드게임입니다. 상대보다 더 넓은 영역을 차지해보세요!
+      </p>
+
       <div className='flex flex-wrap gap-2 mb-2 items-center justify-center'>
         {TIMER_OPTIONS.map((sec) => (
           <button
@@ -610,7 +624,13 @@ export default function WallBaduk() {
       )}
       {gameEnd && (
         <div className='mt-2 text-lg md:text-xl font-bold text-center'>
-          {scores[0] > scores[1] ? '플레이어 1 승리!' : scores[0] < scores[1] ? '플레이어 2 승리!' : '무승부!'}
+          {scores[0] > scores[1] ? (
+            <span className='text-blue-700'>🎉 플레이어 1 승리! 🎉</span>
+          ) : scores[0] < scores[1] ? (
+            <span className='text-red-700'>🎉 플레이어 2 승리! 🎉</span>
+          ) : (
+            <span className='text-gray-700'>🤝 무승부! 🤝</span>
+          )}
         </div>
       )}
       <button
@@ -619,6 +639,86 @@ export default function WallBaduk() {
       >
         리셋
       </button>
+
+      {/* 게임 규칙 모달 */}
+      {showRules && (
+        <div className='fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4'>
+          <div className='bg-white rounded-lg shadow-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto'>
+            <div className='p-6'>
+              <div className='flex justify-between items-center mb-4'>
+                <h3 className='text-xl font-bold text-gray-800'>벽바둑 게임 규칙</h3>
+                <button
+                  onClick={() => setShowRules(false)}
+                  className='text-gray-500 hover:text-gray-700 text-2xl font-bold'
+                >
+                  ×
+                </button>
+              </div>
+
+              <div className='space-y-4 text-sm md:text-base text-gray-700'>
+                <div>
+                  <h4 className='font-semibold text-gray-800 mb-2'>게임 목표</h4>
+                  <p>돌을 이동하고 벽을 설치하여 같은 색 돌만 있는 영역을 만들어 점수를 얻는 게임입니다.</p>
+                </div>
+
+                <div>
+                  <h4 className='font-semibold text-gray-800 mb-2'>게임 진행</h4>
+                  <ol className='list-decimal list-inside space-y-2'>
+                    <li>
+                      <strong>돌 배치</strong>: 각 플레이어가 2개씩 돌을 배치합니다 (A→B→B→A 순서)
+                    </li>
+                    <li>
+                      <strong>돌 이동</strong>: 상하좌우 1-2칸, 대각선 1칸 이동 가능
+                    </li>
+                    <li>
+                      <strong>벽 설치</strong>: 돌 이동 후 상하좌우에 벽을 설치할 수 있습니다
+                    </li>
+                  </ol>
+                </div>
+
+                <div>
+                  <h4 className='font-semibold text-gray-800 mb-2'>이동 규칙</h4>
+                  <ul className='list-disc list-inside space-y-1'>
+                    <li>
+                      <strong>직선 이동</strong>: 상하좌우로 1칸 또는 2칸 이동 (중간에 돌이나 벽이 없어야 함)
+                    </li>
+                    <li>
+                      <strong>대각선 이동</strong>: 대각선으로 1칸 이동 (대각선 경로에 돌이 없어야 함)
+                    </li>
+                    <li>
+                      <strong>벽 통과 불가</strong>: 벽이 설치된 경로로는 이동할 수 없음
+                    </li>
+                  </ul>
+                </div>
+
+                <div>
+                  <h4 className='font-semibold text-gray-800 mb-2'>영역과 점수</h4>
+                  <ul className='list-disc list-inside space-y-1'>
+                    <li>
+                      <strong>영역 소유</strong>: 같은 색 돌만 있는 영역을 소유합니다
+                    </li>
+                    <li>
+                      <strong>점수 계산</strong>: 소유한 영역의 크기(셀 개수)가 점수가 됩니다
+                    </li>
+                    <li>
+                      <strong>승리 조건</strong>: 모든 돌의 영역이 결정되면 소유한 영역이 큰 플레이어가 승리합니다
+                    </li>
+                  </ul>
+                </div>
+
+                <div>
+                  <h4 className='font-semibold text-gray-800 mb-2'>전략 팁</h4>
+                  <ul className='list-disc list-inside space-y-1'>
+                    <li>돌을 전략적으로 배치하여 초기 영역을 확보하세요</li>
+                    <li>벽을 설치하여 상대방의 이동을 차단하세요</li>
+                    <li>자신의 돌들을 연결하여 큰 영역을 만드세요</li>
+                  </ul>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
