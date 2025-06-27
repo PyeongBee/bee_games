@@ -642,8 +642,14 @@ export default function WallBaduk() {
 
       {/* 게임 규칙 모달 */}
       {showRules && (
-        <div className='fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4'>
-          <div className='bg-white rounded-lg shadow-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto'>
+        <div
+          className='fixed inset-0 bg-black/70 z-50 flex items-center justify-center p-4'
+          onClick={() => setShowRules(false)}
+        >
+          <div
+            className='bg-white rounded-lg shadow-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto'
+            onClick={(e) => e.stopPropagation()}
+          >
             <div className='p-6'>
               <div className='flex justify-between items-center mb-4'>
                 <h3 className='text-xl font-bold text-gray-800'>벽바둑 게임 규칙</h3>
