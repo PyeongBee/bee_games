@@ -1,34 +1,15 @@
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
-import { Circle, Square } from 'lucide-react';
-
-const N = 7;
-
-// 플레이어 정보
-const players = [
-  { name: '플레이어 1', color: 'text-blue-600', icon: Circle },
-  { name: '플레이어 2', color: 'text-red-600', icon: Square },
-];
-
-// 초기 돌 위치 (예시: 각자 모서리)
-const initialStones: [number, number, number][] = [
-  [1, 1, 0], // 플레이어 1 (파랑)
-  [1, 5, 1], // 플레이어 2 (빨강)
-  [5, 5, 0], // 플레이어 1 (파랑)
-  [5, 1, 1], // 플레이어 2 (빨강)
-];
+import { MAP_SIZE, players, initialStones, TIMER_OPTIONS } from './values';
+import { checkStone, checkWall } from './logics';
 
 // 벽 정보: 각 셀의 오른쪽/아래쪽에 벽이 있는지 저장 (number|null: 설치한 플레이어)
 function createEmptyWalls() {
   return {
-    right: Array.from({ length: N }, () => Array(N).fill(null) as (number | null)[]),
-    down: Array.from({ length: N }, () => Array(N).fill(null) as (number | null)[]),
+    right: Array.from({ length: MAP_SIZE }, () => Array(MAP_SIZE).fill(null) as (number | null)[]),
+    down: Array.from({ length: MAP_SIZE }, () => Array(MAP_SIZE).fill(null) as (number | null)[]),
   };
-}
-
-function checkStone(r: number, c: number, stones: [number, number, number][]) {
-  return stones.some(([ox, oy]) => ox === r && oy === c);
 }
 
 // 돌을 뛰어넘지 못하게, 경로에 돌이 있는지 체크
@@ -46,7 +27,7 @@ function isValidMove(
   const dy = tc - fc;
   // 한 칸(상하좌우)
   if ((Math.abs(dx) === 1 && dy === 0) || (dx === 0 && Math.abs(dy) === 1)) {
-    if (!checkEmptyWall(fr, fc, tr, tc, walls)) return false;
+    if (checkWall(fr, fc, tr, tc, walls)) return false;
     if (checkStone(tr, tc, stones)) return false;
     return true;
   }
@@ -55,49 +36,18 @@ function isValidMove(
     const mr = fr + (dx === 0 ? 0 : dx / 2);
     const mc = fc + (dy === 0 ? 0 : dy / 2);
     if (checkStone(mr, mc, stones) || checkStone(tr, tc, stones)) return false;
-    if (!checkEmptyWall(fr, fc, mr, mc, walls)) return false;
-    if (!checkEmptyWall(mr, mc, tr, tc, walls)) return false;
+    if (checkWall(fr, fc, mr, mc, walls)) return false;
+    if (checkWall(mr, mc, tr, tc, walls)) return false;
     return true;
   }
   // 대각선(1,1) 이동: (fr,fc)→(tr,tc)에서 (fr,tc), (tr,fc) 중 하나라도 돌이 없으면 이동 가능, 둘 다 있으면 불가
   if (Math.abs(dx) === 1 && Math.abs(dy) === 1) {
     if (checkStone(fr, tc, stones) && checkStone(tr, fc, stones) && checkStone(tr, tc, stones)) return false;
-    if (!checkEmptyWall(fr, fc, tr, tc, walls)) return false;
-    if (!checkEmptyWall(tr, tc, fr, fc, walls)) return false;
+    if (checkWall(fr, fc, tr, tc, walls)) return false;
+    if (checkWall(tr, tc, fr, fc, walls)) return false;
     return true;
   }
   // 그 외는 불가
-  return false;
-}
-
-function checkEmptyWall(
-  fr: number,
-  fc: number,
-  tr: number,
-  tc: number,
-  walls: { right: (number | null)[][]; down: (number | null)[][] }
-) {
-  // fr, fc → tr, tc로 한 칸 이동 시 벽 체크
-  if (fr === tr && Math.abs(fc - tc) === 1) {
-    // 좌우
-    if (fc < tc) {
-      return walls.right[fr][fc] === null;
-    } else {
-      return walls.right[fr][tc] === null;
-    }
-  } else if (fc === tc && Math.abs(fr - tr) === 1) {
-    // 상하
-    if (fr < tr) {
-      return walls.down[fr][fc] === null;
-    } else {
-      return walls.down[tr][fc] === null;
-    }
-  } else if (Math.abs(fr - tr) === 1 && Math.abs(fc - tc) === 1) {
-    // 대각선: 두 경로 중 하나라도 벽이 없으면 허용
-    const path1 = walls.right[fr][fc] === null && walls.down[fr][tc] === null;
-    const path2 = walls.down[fr][fc] === null && walls.right[tr][fc] === null;
-    return path1 || path2;
-  }
   return false;
 }
 
@@ -105,9 +55,9 @@ function checkEmptyWall(
 function getAvailableWalls(lastMoved: [number, number]) {
   const [r, c] = lastMoved;
   const result: { r: number; c: number; dir: 'right' | 'down' }[] = [];
-  if (c < N - 1) result.push({ r, c, dir: 'right' });
+  if (c < MAP_SIZE - 1) result.push({ r, c, dir: 'right' });
   if (c > 0) result.push({ r, c: c - 1, dir: 'right' });
-  if (r < N - 1) result.push({ r, c, dir: 'down' });
+  if (r < MAP_SIZE - 1) result.push({ r, c, dir: 'down' });
   if (r > 0) result.push({ r: r - 1, c, dir: 'down' });
   return result;
 }
@@ -117,8 +67,8 @@ function getAreas(
   stones: [number, number, number][],
   walls: { right: (number | null)[][]; down: (number | null)[][] }
 ) {
-  const visited = Array.from({ length: N }, () => Array(N).fill(false));
-  const areaMap: number[][] = Array.from({ length: N }, () => Array(N).fill(-1));
+  const visited = Array.from({ length: MAP_SIZE }, () => Array(MAP_SIZE).fill(false));
+  const areaMap: number[][] = Array.from({ length: MAP_SIZE }, () => Array(MAP_SIZE).fill(-1));
   const areas: { cells: [number, number][]; owners: number[] }[] = [];
   let areaId = 0;
   const dirs: [number, number, string][] = [
@@ -127,8 +77,8 @@ function getAreas(
     [0, -1, 'right'],
     [-1, 0, 'down'],
   ];
-  for (let i = 0; i < N; i++) {
-    for (let j = 0; j < N; j++) {
+  for (let i = 0; i < MAP_SIZE; i++) {
+    for (let j = 0; j < MAP_SIZE; j++) {
       if (visited[i][j]) continue;
       // BFS로 구역 탐색
       const queue: [number, number][] = [[i, j]];
@@ -142,7 +92,7 @@ function getAreas(
           const dc = Number(dirs[d][1]);
           const nr = Number(r) + dr;
           const nc = Number(c) + dc;
-          if (nr < 0 || nr >= N || nc < 0 || nc >= N) continue;
+          if (nr < 0 || nr >= MAP_SIZE || nc < 0 || nc >= MAP_SIZE) continue;
           // 벽 체크
           if (d === 0 && walls.right[r][c] !== null) continue; // 오른쪽
           if (d === 1 && walls.down[r][c] !== null) continue; // 아래
@@ -175,8 +125,8 @@ function isGameOver(
 ) {
   // 모든 돌이 이동 불가
   for (let i = 0; i < stones.length; i++) {
-    for (let r = 0; r < N; r++) {
-      for (let c = 0; c < N; c++) {
+    for (let r = 0; r < MAP_SIZE; r++) {
+      for (let c = 0; c < MAP_SIZE; c++) {
         if (isValidMove([r, c], [r, c], walls, stones)) {
           if (!(stones[i][0] === r && stones[i][1] === c)) return false;
         }
@@ -185,8 +135,6 @@ function isGameOver(
   }
   return true;
 }
-
-const TIMER_OPTIONS = [0, 15, 30, 60]; // 0: 없음(무제한)
 
 export default function WallBaduk() {
   // stones: [r, c, owner] 배열
@@ -251,14 +199,14 @@ export default function WallBaduk() {
       for (let dist = 1; dist <= 2; dist++) {
         const nr = sr + dr * dist;
         const nc = sc + dc * dist;
-        if (nr < 0 || nr >= N || nc < 0 || nc >= N) break;
+        if (nr < 0 || nr >= MAP_SIZE || nc < 0 || nc >= MAP_SIZE) break;
         let blocked = false;
         let cr = sr,
           cc = sc;
         for (let step = 1; step <= dist; step++) {
           const tr = sr + dr * step;
           const tc = sc + dc * step;
-          if (!checkEmptyWall(cr, cc, tr, tc, walls)) {
+          if (checkWall(cr, cc, tr, tc, walls)) {
             blocked = true;
             break;
           }
@@ -278,29 +226,13 @@ export default function WallBaduk() {
     for (const [dr, dc] of diagDirs) {
       const nr = sr + dr;
       const nc = sc + dc;
-      if (nr < 0 || nr >= N || nc < 0 || nc >= N) continue;
+      if (nr < 0 || nr >= MAP_SIZE || nc < 0 || nc >= MAP_SIZE) continue;
 
-      if (nc > 0) {
-      }
-
-      if (checkStone(sr, nc, stones) && checkStone(nr, sc, stones) && checkStone(nr, nc, stones)) continue;
-      if (!checkEmptyWall(sr, sc, nr, nc, walls)) continue;
-      if (!checkEmptyWall(nr, nc, sr, sc, walls)) continue;
+      if (checkStone(sr, nc, stones) || checkStone(nr, sc, stones) || checkStone(nr, nc, stones)) continue;
+      if (checkWall(sr, sc, nr, nc, walls)) continue;
       result.push([nr, nc]);
     }
     return result;
-  }
-
-  function checkOneStepMove(
-    sr: number,
-    sc: number,
-    tr: number,
-    tc: number,
-    walls: { right: (number | null)[][]; down: (number | null)[][] },
-    stones: [number, number, number][]
-  ) {
-    if (sr === tr && sc === tc) return true;
-    return checkEmptyWall(sr, sc, tr, tc, walls) && !checkStone(tr, tc, stones);
   }
 
   // --- 돌 클릭(이동/선택) ---
@@ -493,11 +425,11 @@ export default function WallBaduk() {
           </>
         )}
       </div>
-      <div className='relative' style={{ width: N * 48, height: N * 48 }}>
+      <div className='relative' style={{ width: MAP_SIZE * 48, height: MAP_SIZE * 48 }}>
         <div className='grid grid-cols-7 grid-rows-7 border-2 border-gray-400 absolute top-0 left-0'>
-          {Array.from({ length: N * N }).map((_, idx) => {
-            const r = Math.floor(idx / N);
-            const c = idx % N;
+          {Array.from({ length: MAP_SIZE * MAP_SIZE }).map((_, idx) => {
+            const r = Math.floor(idx / MAP_SIZE);
+            const c = idx % MAP_SIZE;
             const stoneIdx = stones.findIndex(([sr, sc]) => sr === r && sc === c);
             const StoneIcon = stoneIdx !== -1 ? players[stones[stoneIdx][2]].icon : null;
             let bg = '';
