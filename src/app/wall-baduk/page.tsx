@@ -12,45 +12,6 @@ function createEmptyWalls() {
   };
 }
 
-// 돌을 뛰어넘지 못하게, 경로에 돌이 있는지 체크
-function isValidMove(
-  from: [number, number],
-  to: [number, number],
-  walls: { right: (number | null)[][]; down: (number | null)[][] },
-  stones: [number, number, number][]
-) {
-  const [fr, fc] = from;
-  const [tr, tc] = to;
-  // 제자리
-  if (fr === tr && fc === tc) return true;
-  const dx = tr - fr;
-  const dy = tc - fc;
-  // 한 칸(상하좌우)
-  if ((Math.abs(dx) === 1 && dy === 0) || (dx === 0 && Math.abs(dy) === 1)) {
-    if (checkWall(fr, fc, tr, tc, walls)) return false;
-    if (checkStone(tr, tc, stones)) return false;
-    return true;
-  }
-  // 두 칸(상하좌우)
-  if ((Math.abs(dx) === 2 && dy === 0) || (dx === 0 && Math.abs(dy) === 2)) {
-    const mr = fr + (dx === 0 ? 0 : dx / 2);
-    const mc = fc + (dy === 0 ? 0 : dy / 2);
-    if (checkStone(mr, mc, stones) || checkStone(tr, tc, stones)) return false;
-    if (checkWall(fr, fc, mr, mc, walls)) return false;
-    if (checkWall(mr, mc, tr, tc, walls)) return false;
-    return true;
-  }
-  // 대각선(1,1) 이동: (fr,fc)→(tr,tc)에서 (fr,tc), (tr,fc) 중 하나라도 돌이 없으면 이동 가능, 둘 다 있으면 불가
-  if (Math.abs(dx) === 1 && Math.abs(dy) === 1) {
-    if (checkStone(fr, tc, stones) && checkStone(tr, fc, stones) && checkStone(tr, tc, stones)) return false;
-    if (checkWall(fr, fc, tr, tc, walls)) return false;
-    if (checkWall(tr, tc, fr, fc, walls)) return false;
-    return true;
-  }
-  // 그 외는 불가
-  return false;
-}
-
 // 벽 설치 가능 위치: 방금 이동한 돌의 상하좌우만
 function getAvailableWalls(lastMoved: [number, number]) {
   const [r, c] = lastMoved;
@@ -137,21 +98,35 @@ function getAreas(
   return { areas, areaMap };
 }
 
-// 게임 종료 판정: 모든 돌이 이동 불가 or 모든 구역 소유자 확정
+// 게임 종료 판정: 모든 돌의 영역이 소유자가 결정되었는지 확인
 function isGameOver(
   stones: [number, number, number][],
   walls: { right: (number | null)[][]; down: (number | null)[][] }
 ) {
-  // 모든 돌이 이동 불가
-  for (let i = 0; i < stones.length; i++) {
-    for (let r = 0; r < MAP_SIZE; r++) {
-      for (let c = 0; c < MAP_SIZE; c++) {
-        if (isValidMove([r, c], [r, c], walls, stones)) {
-          if (!(stones[i][0] === r && stones[i][1] === c)) return false;
-        }
+  const { areas } = getAreas(stones, walls);
+
+  // 모든 돌이 어떤 영역에 속하는지 확인
+  const stoneAreas = new Set<number>();
+
+  for (const stone of stones) {
+    const [r, c] = stone;
+    for (let i = 0; i < areas.length; i++) {
+      if (areas[i].cells.some(([ar, ac]) => ar === r && ac === c)) {
+        stoneAreas.add(i);
+        break;
       }
     }
   }
+
+  // 모든 돌이 속한 영역의 소유자가 결정되었는지 확인
+  for (const areaIdx of stoneAreas) {
+    if (areas[areaIdx].owners.length === 0) {
+      // 소유자가 결정되지 않은 영역이 있으면 게임 계속
+      return false;
+    }
+  }
+
+  // 모든 돌의 영역이 소유자가 결정되었으면 게임 종료
   return true;
 }
 
