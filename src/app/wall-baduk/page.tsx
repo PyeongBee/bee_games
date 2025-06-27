@@ -138,7 +138,6 @@ export default function WallBaduk() {
   const [gameEnd, setGameEnd] = useState(false);
   const [phase, setPhase] = useState<'placement' | 'move' | 'wall'>('placement');
   const [placementStep, setPlacementStep] = useState(0); // 0~3
-  const [hoverWall, setHoverWall] = useState<{ r: number; c: number; dir: 'right' | 'down' } | null>(null);
   const [selectedStone, setSelectedStone] = useState<number | null>(null); // 선택된 돌 인덱스
   const [lastMovedStone, setLastMovedStone] = useState<[number, number] | null>(null);
   const [timerSec, setTimerSec] = useState(0);
@@ -320,13 +319,6 @@ export default function WallBaduk() {
     }
   }, [phase, lastMovedStone, walls, turn]);
 
-  function handleWallMouseEnter(r: number, c: number, dir: 'right' | 'down') {
-    setHoverWall({ r, c, dir });
-  }
-  function handleWallMouseLeave() {
-    setHoverWall(null);
-  }
-
   function handleReset() {
     setStones(initialStones);
     setWalls(createEmptyWalls());
@@ -334,7 +326,6 @@ export default function WallBaduk() {
     setGameEnd(false);
     setPhase('placement');
     setPlacementStep(0);
-    setHoverWall(null);
     setSelectedStone(null);
     setLastMovedStone(null);
   }
@@ -518,6 +509,7 @@ export default function WallBaduk() {
         {walls.right.map((row, r) =>
           row.map((v, c) => {
             const isAvailable = availableWalls.some((w) => w.r === r && w.c === c && w.dir === 'right');
+            const shouldShow = v !== null || (phase === 'wall' && v === null && isAvailable);
             return (
               <div
                 key={`r${r}-${c}`}
@@ -530,37 +522,17 @@ export default function WallBaduk() {
                   borderRadius: 4,
                   zIndex: 10,
                   backgroundColor:
-                    hoverWall &&
-                    hoverWall.dir === 'right' &&
-                    hoverWall.r === r &&
-                    hoverWall.c === c &&
-                    phase === 'wall' &&
-                    v === null &&
-                    isAvailable
-                      ? 'rgba(253, 224, 71, 0.6)'
-                      : v === 0
+                    v === 0
                       ? '#3b82f6'
                       : v === 1
                       ? '#ef4444'
+                      : phase === 'wall' && v === null && isAvailable
+                      ? 'rgba(253, 224, 71, 0.6)'
                       : undefined,
                   cursor: phase === 'wall' && v === null && isAvailable ? 'pointer' : 'default',
-                  opacity:
-                    v !== null ||
-                    (hoverWall &&
-                      hoverWall.dir === 'right' &&
-                      hoverWall.r === r &&
-                      hoverWall.c === c &&
-                      phase === 'wall' &&
-                      v === null &&
-                      isAvailable)
-                      ? 1
-                      : 0.2,
+                  opacity: shouldShow ? 1 : 0.2,
                 }}
                 onClick={() => phase === 'wall' && v === null && isAvailable && handlePlaceWall(r, c, 'right')}
-                onMouseEnter={() =>
-                  phase === 'wall' && v === null && isAvailable && handleWallMouseEnter(r, c, 'right')
-                }
-                onMouseLeave={handleWallMouseLeave}
               />
             );
           })
@@ -569,6 +541,7 @@ export default function WallBaduk() {
         {walls.down.map((row, r) =>
           row.map((v, c) => {
             const isAvailable = availableWalls.some((w) => w.r === r && w.c === c && w.dir === 'down');
+            const shouldShow = v !== null || (phase === 'wall' && v === null && isAvailable);
             return (
               <div
                 key={`d${r}-${c}`}
@@ -581,35 +554,17 @@ export default function WallBaduk() {
                   borderRadius: 4,
                   zIndex: 10,
                   backgroundColor:
-                    hoverWall &&
-                    hoverWall.dir === 'down' &&
-                    hoverWall.r === r &&
-                    hoverWall.c === c &&
-                    phase === 'wall' &&
-                    v === null &&
-                    isAvailable
-                      ? 'rgba(253, 224, 71, 0.6)'
-                      : v === 0
+                    v === 0
                       ? '#3b82f6'
                       : v === 1
                       ? '#ef4444'
+                      : phase === 'wall' && v === null && isAvailable
+                      ? 'rgba(253, 224, 71, 0.6)'
                       : undefined,
                   cursor: phase === 'wall' && v === null && isAvailable ? 'pointer' : 'default',
-                  opacity:
-                    v !== null ||
-                    (hoverWall &&
-                      hoverWall.dir === 'down' &&
-                      hoverWall.r === r &&
-                      hoverWall.c === c &&
-                      phase === 'wall' &&
-                      v === null &&
-                      isAvailable)
-                      ? 1
-                      : 0.2,
+                  opacity: shouldShow ? 1 : 0.2,
                 }}
                 onClick={() => phase === 'wall' && v === null && isAvailable && handlePlaceWall(r, c, 'down')}
-                onMouseEnter={() => phase === 'wall' && v === null && isAvailable && handleWallMouseEnter(r, c, 'down')}
-                onMouseLeave={handleWallMouseLeave}
               />
             );
           })
