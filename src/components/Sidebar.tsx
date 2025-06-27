@@ -75,9 +75,9 @@ export default function Sidebar() {
         <div className='flex flex-col gap-6 w-full items-center'>
           {/* 로고 또는 플랫폼 아이콘 */}
           <div className='mb-8 mt-2'>
-            <Link href='/' onClick={closeSidebar}>
+            <div onClick={isMobile ? closeSidebar : undefined}>
               <span className='text-2xl font-bold text-yellow-500'>🐝</span>
-            </Link>
+            </div>
           </div>
           {/* 게임 목록 */}
           <nav className='flex flex-col gap-6 w-full items-center'>
