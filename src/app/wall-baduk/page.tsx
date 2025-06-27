@@ -222,7 +222,14 @@ export default function WallBaduk() {
       const nc = sc + dc;
       if (nr < 0 || nr >= MAP_SIZE || nc < 0 || nc >= MAP_SIZE) continue;
 
-      if (checkStone(sr, nc, stones) || checkStone(nr, sc, stones) || checkStone(nr, nc, stones)) continue;
+      console.log(sr, sc, '->', nr, nc, ' 가능');
+      console.log(checkStone(sr, nc, stones), checkStone(nr, sc, stones), checkStone(nr, nc, stones));
+      console.log(checkWall(sr, sc, nr, nc, walls));
+      console.log(stones);
+      console.log(walls);
+
+      if (checkStone(nr, nc, stones)) continue;
+      if (checkStone(sr, nc, stones) && checkStone(nr, sc, stones)) continue;
       if (checkWall(sr, sc, nr, nc, walls)) continue;
       result.push([nr, nc]);
     }
