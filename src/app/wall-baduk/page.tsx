@@ -145,6 +145,26 @@ export default function WallBaduk() {
   const [timer, setTimer] = useState(timerSec);
   const timerRef = useRef<NodeJS.Timeout | null>(null);
   const [infoMessage, setInfoMessage] = useState<string | null>(null);
+  const [isMobile, setIsMobile] = useState(false);
+
+  // 반응형 크기 계산
+  const cellSize = isMobile ? 32 : 48;
+  const wallThickness = cellSize / 6;
+  const wallOffset = cellSize / 12;
+
+  // 화면 크기 감지
+  useEffect(() => {
+    const checkIsMobile = () => {
+      setIsMobile(window.innerWidth < 768);
+    };
+
+    checkIsMobile();
+    window.addEventListener('resize', checkIsMobile);
+
+    return () => {
+      window.removeEventListener('resize', checkIsMobile);
+    };
+  }, []);
 
   // placementOrder: [A, B, B, A]
   const placementOrder = [0, 1, 1, 0];
@@ -223,7 +243,8 @@ export default function WallBaduk() {
       if (nr < 0 || nr >= MAP_SIZE || nc < 0 || nc >= MAP_SIZE) continue;
 
       console.log(sr, sc, '->', nr, nc, ' 가능');
-      console.log(checkStone(sr, nc, stones), checkStone(nr, sc, stones), checkStone(nr, nc, stones));
+      console.log(checkStone(nr, nc, stones));
+      console.log(checkStone(sr, nc, stones), checkStone(nr, sc, stones));
       console.log(checkWall(sr, sc, nr, nc, walls));
       console.log(stones);
       console.log(walls);
@@ -372,13 +393,13 @@ export default function WallBaduk() {
   }, [timer]);
 
   return (
-    <div className='flex flex-col items-center gap-6'>
-      <h2 className='text-2xl font-bold mb-2 text-amber-800'>벽바둑</h2>
-      <div className='flex gap-2 mb-2 items-center'>
+    <div className='flex flex-col items-center gap-4 md:gap-6 p-4'>
+      <h2 className='text-xl md:text-2xl font-bold mb-2 text-amber-800'>벽바둑</h2>
+      <div className='flex flex-wrap gap-2 mb-2 items-center justify-center'>
         {TIMER_OPTIONS.map((sec) => (
           <button
             key={sec}
-            className={`px-3 py-1 rounded border text-sm font-semibold transition-colors
+            className={`px-2 md:px-3 py-1 rounded border text-xs md:text-sm font-semibold transition-colors
               ${
                 timerSec === sec
                   ? 'bg-blue-400 text-white border-blue-500'
@@ -392,12 +413,12 @@ export default function WallBaduk() {
           </button>
         ))}
         {phase !== 'placement' && !gameEnd && timerSec > 0 && (
-          <span className='ml-2 text-lg font-bold text-blue-700'>⏰ {timer}</span>
+          <span className='ml-2 text-base md:text-lg font-bold text-blue-700'>⏰ {timer}</span>
         )}
       </div>
-      <div className='mb-2 text-gray-700 font-medium'>
+      <div className='mb-2 text-sm md:text-base text-gray-700 font-medium text-center'>
         {gameEnd ? (
-          <span className='text-xl font-bold text-green-700'>게임 종료!</span>
+          <span className='text-lg md:text-xl font-bold text-green-700'>게임 종료!</span>
         ) : phase === 'placement' ? (
           <>
             돌 추가 배치:{' '}
@@ -426,8 +447,11 @@ export default function WallBaduk() {
           </>
         )}
       </div>
-      <div className='relative' style={{ width: MAP_SIZE * 48, height: MAP_SIZE * 48 }}>
-        <div className='grid grid-cols-7 grid-rows-7 border-2 border-gray-400 absolute top-0 left-0'>
+      <div className='relative' style={{ width: MAP_SIZE * cellSize, height: MAP_SIZE * cellSize }}>
+        <div
+          className='grid grid-cols-7 grid-rows-7 border-2 border-gray-400 absolute top-0 left-0'
+          style={{ width: MAP_SIZE * cellSize, height: MAP_SIZE * cellSize }}
+        >
           {Array.from({ length: MAP_SIZE * MAP_SIZE }).map((_, idx) => {
             const r = Math.floor(idx / MAP_SIZE);
             const c = idx % MAP_SIZE;
@@ -453,7 +477,12 @@ export default function WallBaduk() {
             return (
               <button
                 key={idx}
-                className={`w-12 h-12 flex items-center justify-center border border-gray-300 text-2xl ${bg} ${highlight} hover:bg-green-300 transition-colors relative`}
+                className={`flex items-center justify-center border border-gray-300 ${bg} ${highlight} hover:bg-green-300 transition-colors relative`}
+                style={{
+                  width: cellSize,
+                  height: cellSize,
+                  fontSize: cellSize * 0.4,
+                }}
                 onClick={() => (phase === 'placement' ? handlePlacement(r, c) : handleMoveOrSelect(r, c))}
                 disabled={
                   gameEnd ||
@@ -487,10 +516,10 @@ export default function WallBaduk() {
                 key={`r${r}-${c}`}
                 className={`absolute`}
                 style={{
-                  left: 48 * (c + 1) - 4,
-                  top: 48 * r + 8,
-                  width: 8,
-                  height: 32,
+                  left: cellSize * (c + 1) - wallOffset,
+                  top: cellSize * r + wallOffset,
+                  width: wallThickness,
+                  height: cellSize - 2 * wallOffset,
                   borderRadius: 4,
                   zIndex: 10,
                   backgroundColor:
@@ -538,10 +567,10 @@ export default function WallBaduk() {
                 key={`d${r}-${c}`}
                 className={`absolute`}
                 style={{
-                  left: 48 * c + 8,
-                  top: 48 * (r + 1) - 4,
-                  width: 32,
-                  height: 8,
+                  left: cellSize * c + wallOffset,
+                  top: cellSize * (r + 1) - wallOffset,
+                  width: cellSize - 2 * wallOffset,
+                  height: wallThickness,
                   borderRadius: 4,
                   zIndex: 10,
                   backgroundColor:
@@ -579,19 +608,21 @@ export default function WallBaduk() {
           })
         )}
       </div>
-      <div className='flex gap-8 mt-4 text-lg font-semibold'>
+      <div className='flex flex-col md:flex-row gap-4 md:gap-8 mt-4 text-base md:text-lg font-semibold'>
         <span className='text-blue-700'>플레이어 1 점수: {scores[0]}</span>
         <span className='text-red-700'>플레이어 2 점수: {scores[1]}</span>
       </div>
-      {infoMessage && <div className='mt-2 text-base text-gray-700 font-medium'>{infoMessage}</div>}
+      {infoMessage && (
+        <div className='mt-2 text-sm md:text-base text-gray-700 font-medium text-center'>{infoMessage}</div>
+      )}
       {gameEnd && (
-        <div className='mt-2 text-xl font-bold'>
+        <div className='mt-2 text-lg md:text-xl font-bold text-center'>
           {scores[0] > scores[1] ? '플레이어 1 승리!' : scores[0] < scores[1] ? '플레이어 2 승리!' : '무승부!'}
         </div>
       )}
       <button
         onClick={handleReset}
-        className='mt-2 px-4 py-1 bg-gray-300 rounded hover:bg-gray-400 text-sm font-medium'
+        className='mt-2 px-4 py-2 bg-gray-300 rounded hover:bg-gray-400 text-sm md:text-base font-medium'
       >
         리셋
       </button>
