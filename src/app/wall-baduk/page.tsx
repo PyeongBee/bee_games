@@ -242,16 +242,9 @@ export default function WallBaduk() {
       const nc = sc + dc;
       if (nr < 0 || nr >= MAP_SIZE || nc < 0 || nc >= MAP_SIZE) continue;
 
-      console.log(sr, sc, '->', nr, nc, ' 가능');
-      console.log(checkStone(nr, nc, stones));
-      console.log(checkStone(sr, nc, stones), checkStone(nr, sc, stones));
-      console.log(checkWall(sr, sc, nr, nc, walls));
-      console.log(stones);
-      console.log(walls);
-
       if (checkStone(nr, nc, stones)) continue;
       if (checkStone(sr, nc, stones) && checkStone(nr, sc, stones)) continue;
-      if (checkWall(sr, sc, nr, nc, walls)) continue;
+      if (checkWall(sr, sc, nr, nc, walls, 'CW') && checkWall(sr, sc, nr, nc, walls, 'CCW')) continue;
       result.push([nr, nc]);
     }
     return result;
